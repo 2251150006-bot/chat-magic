@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/database';
+
 const firebaseConfig = {
   apiKey: 'AIzaSyBbpvdRorOfPJIEwl3fS4WMXeTYKXWm0rs',
   authDomain: 'chat-app-demo-98c63.firebaseapp.com',
@@ -12,11 +13,13 @@ const firebaseConfig = {
   measurementId: 'G-0FET3WDGCT',
   databaseURL: 'https://chat-app-demo-98c63-default-rtdb.firebaseio.com/'
 };
+
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 const auth = firebase.auth();
 const db = firebase.database();
+
 export function App() {
   const [user, setUser] = useState<firebase.User | null>(null);
   const [currentRoomId, setCurrentRoomId] = useState('global');
@@ -30,6 +33,7 @@ export function App() {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const messageListRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setUser(user);
@@ -41,11 +45,13 @@ export function App() {
     });
     return () => unsubscribe();
   }, []);
+
   useEffect(() => {
     if (messageListRef.current) {
       messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
     }
   }, [messages]);
+
   async function handleSignUp() {
     const email = regEmail;
     const password = regPassword;
@@ -76,6 +82,7 @@ export function App() {
       alert(e.message);
     }
   }
+
   async function handleLogin() {
     const email = regEmail;
     const password = regPassword;
@@ -85,12 +92,14 @@ export function App() {
       alert(e.message);
     }
   }
+
   function handleLogout() {
     if (auth.currentUser) {
       db.ref('status/' + auth.currentUser.uid).remove();
     }
     auth.signOut();
   }
+
   function createGroup() {
     const name = prompt('Nhập tên nhóm mới:');
     if (!name) return;
@@ -103,6 +112,7 @@ export function App() {
       }
     });
   }
+
   async function leaveCurrentGroup() {
     if (currentRoomId === 'global') return;
     if (!confirm(`Bạn có chắc chắn muốn rời khỏi nhóm này không?`)) return;
@@ -116,6 +126,7 @@ export function App() {
       alert('Lỗi: ' + e.message);
     }
   }
+
   async function deleteCurrentGroup() {
     if (currentRoomId === 'global') return;
     if (currentAdminId !== auth.currentUser?.uid) {
@@ -137,6 +148,7 @@ export function App() {
       alert('Lỗi: ' + e.message);
     }
   }
+
   function loadGroups() {
     db.ref('groups').on('value', (snapshot) => {
       const groupsList: any[] = [];
@@ -153,17 +165,31 @@ export function App() {
         }
       });
       setGroups(groupsList);
-      if (currentRoomId !== 'global' && !groupStillExists) {
+      if (currentRoomId !== 'global' && !currentRoomId.includes('_') && !groupStillExists) {
+        // Chỉ out ra phòng chung nếu đang ở nhóm bị xóa (bỏ qua phòng chat riêng vì ID phòng riêng có chứa dấu _)
         switchRoom('global', '🌐 Phòng chung', null);
       }
     });
   }
+
   function switchRoom(id: string, name: string, adminId: string | null) {
     setCurrentRoomId(id);
     setCurrentRoomName(name);
     setCurrentAdminId(adminId);
     loadMessages(id);
   }
+
+  // TÍNH NĂNG NHẮN TIN RIÊNG
+  function startPrivateChat(targetUid: string, targetName: string) {
+    if (!auth.currentUser) return;
+    const myUid = auth.currentUser.uid;
+    
+    // Gộp 2 UID theo thứ tự Alphabet để tạo ra 1 ID duy nhất không bao giờ đổi cho 2 người này
+    const privateRoomId = myUid < targetUid ? `${myUid}_${targetUid}` : `${targetUid}_${myUid}`;
+    
+    switchRoom(privateRoomId, `💬 Chat với ${targetName}`, null);
+  }
+
   function loadMessages(roomId: string) {
     setMessages([]);
     db.ref('messages/' + roomId).off();
@@ -172,6 +198,7 @@ export function App() {
       setMessages((prev) => [...prev, m]);
     });
   }
+
   function sendMessage() {
     if (!messageInput.trim()) return;
     db.ref('messages/' + currentRoomId).push({
@@ -185,6 +212,7 @@ export function App() {
     });
     setMessageInput('');
   }
+
   function setupPresence(user: firebase.User) {
     const myStatusRef = db.ref('status/' + user.uid);
     db.ref('.info/connected').on('value', (snap) => {
@@ -200,6 +228,7 @@ export function App() {
       setOnlineUsersData(snap.val() || {});
     });
   }
+
   async function addMemberFromList(uid: string, name: string) {
     try {
       await db.ref(`groups/${currentRoomId}/members/${uid}`).set(true);
@@ -208,6 +237,7 @@ export function App() {
       alert('Lỗi: ' + e.message);
     }
   }
+
   async function removeMemberFromList(uid: string, name: string) {
     if (!confirm(`Bạn có chắc muốn xóa ${name} khỏi nhóm này?`)) return;
     try {
@@ -217,12 +247,13 @@ export function App() {
       alert('Lỗi: ' + e.message);
     }
   }
-  const isGroup = currentRoomId !== 'global';
+
+  const isGroup = currentRoomId !== 'global' && !currentRoomId.includes('_'); // ID có dấu '_' là phòng riêng
   const iAmAdmin = currentAdminId === auth.currentUser?.uid;
+
   if (!user) {
     return (
       <div className="min-h-screen w-full bg-gradient-to-br from-blue-600 via-blue-500 to-green-500 flex items-center justify-center p-4 relative overflow-hidden">
-        {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-blue-400/30 to-transparent rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-green-400/30 to-transparent rounded-full blur-3xl animate-pulse delay-1000"></div>
@@ -237,13 +268,11 @@ export function App() {
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24">
-
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
                     d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-
                 </svg>
               </div>
               <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-green-500 bg-clip-text text-transparent mb-3">
@@ -262,9 +291,7 @@ export function App() {
                   value={regUsername}
                   onChange={(e) => setRegUsername(e.target.value)}
                   className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-300 bg-white/80 backdrop-blur-sm group-hover:border-gray-300" />
-
               </div>
-
               <div className="relative group">
                 <input
                   type="email"
@@ -272,9 +299,7 @@ export function App() {
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
                   className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-300 bg-white/80 backdrop-blur-sm group-hover:border-gray-300" />
-
               </div>
-
               <div className="relative group">
                 <input
                   type="password"
@@ -282,28 +307,26 @@ export function App() {
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
                   className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-300 bg-white/80 backdrop-blur-sm group-hover:border-gray-300" />
-
               </div>
 
               <button
                 onClick={handleSignUp}
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]">
-
                 ĐĂNG KÝ
               </button>
 
               <button
                 onClick={handleLogin}
                 className="w-full bg-white/80 backdrop-blur-sm text-gray-800 py-4 rounded-xl font-bold hover:bg-white transition-all duration-300 shadow-md hover:shadow-lg border-2 border-gray-200 hover:border-gray-300 transform hover:scale-[1.02] active:scale-[0.98]">
-
                 ĐĂNG NHẬP
               </button>
             </div>
           </div>
         </div>
-      </div>);
-
+      </div>
+    );
   }
+
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-gradient-to-br from-gray-50 to-blue-50/30">
       {/* Sidebar */}
@@ -315,20 +338,17 @@ export function App() {
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24">
-
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
                 d="M4 6h16M4 12h16M4 18h16" />
-
             </svg>
             Danh sách
           </h2>
           <button
             onClick={createGroup}
             className="bg-white/20 backdrop-blur-sm text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-white/30 transition-all duration-300 shadow-md hover:shadow-lg border border-white/30 transform hover:scale-105 active:scale-95">
-
             + Nhóm
           </button>
         </div>
@@ -344,7 +364,6 @@ export function App() {
             <div
               onClick={() => switchRoom('global', '🌐 Phòng chung', null)}
               className={`px-4 py-3.5 rounded-xl cursor-pointer transition-all duration-300 mb-2 group ${currentRoomId === 'global' ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-[1.02]' : 'hover:bg-gray-100/80 text-gray-700 hover:shadow-md hover:scale-[1.01]'}`}>
-
               <div className="flex items-center gap-3">
                 <span className="text-xl">🌐</span>
                 <span className="font-semibold">Phòng chung</span>
@@ -358,7 +377,6 @@ export function App() {
                   switchRoom(group.id, `📁 ${group.name}`, group.admin)
                 }
                 className={`px-4 py-3.5 rounded-xl cursor-pointer transition-all duration-300 mb-2 group ${currentRoomId === group.id ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-[1.02]' : 'hover:bg-gray-100/80 text-gray-700 hover:shadow-md hover:scale-[1.01]'}`}>
-
                 <div className="flex items-center gap-3">
                   <span className="text-xl">📁</span>
                   <span className="font-semibold">{group.name}</span>
@@ -377,40 +395,49 @@ export function App() {
             {Object.entries(onlineUsersData).map(
               ([uid, userData]: [string, any]) => {
                 const isMe = uid === auth.currentUser?.uid;
-                const showActions = isGroup && iAmAdmin && !isMe;
+                const showGroupActions = isGroup && iAmAdmin && !isMe;
+                
                 return (
                   <div
                     key={uid}
                     className="px-4 py-3 rounded-xl hover:bg-gray-100/60 transition-all duration-300 flex items-center gap-3 mb-2 group hover:shadow-sm">
-
+                    
                     <div className="relative">
                       <div className="w-2.5 h-2.5 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex-shrink-0 shadow-lg shadow-green-500/50"></div>
                       <div className="absolute inset-0 w-2.5 h-2.5 bg-green-400 rounded-full animate-ping opacity-75"></div>
                     </div>
+                    
                     <span className="text-sm text-gray-700 flex-1 truncate font-medium">
                       {userData.name} {isMe ? '(Bạn)' : ''}
                     </span>
 
-                    {showActions &&
-                      <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <button
-                          onClick={() => addMemberFromList(uid, userData.name)}
-                          className="px-2.5 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 font-semibold shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
+                    <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ml-auto">
+                      {!isMe && (
+                         <button
+                           onClick={() => startPrivateChat(uid, userData.name)}
+                           className="px-2.5 py-1.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white text-xs rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 font-semibold shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95"
+                         >
+                           Chat
+                         </button>
+                      )}
 
-                          Thêm
-                        </button>
-                        <button
-                          onClick={() =>
-                            removeMemberFromList(uid, userData.name)
-                          }
-                          className="px-2.5 py-1.5 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-300 font-semibold shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
-
-                          Xóa
-                        </button>
-                      </div>
-                    }
-                  </div>);
-
+                      {showGroupActions && (
+                        <>
+                          <button
+                            onClick={() => addMemberFromList(uid, userData.name)}
+                            className="px-2.5 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 font-semibold shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
+                            Thêm
+                          </button>
+                          <button
+                            onClick={() => removeMemberFromList(uid, userData.name)}
+                            className="px-2.5 py-1.5 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-300 font-semibold shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
+                            Xóa
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
               }
             )}
           </div>
@@ -433,7 +460,6 @@ export function App() {
                 <button
                   onClick={deleteCurrentGroup}
                   className="text-xs bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-1.5 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-300 font-bold shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
-
                   Giải tán nhóm
                 </button>
               </div>
@@ -445,14 +471,12 @@ export function App() {
               <button
                 onClick={leaveCurrentGroup}
                 className="px-5 py-2.5 bg-gradient-to-r from-red-50 to-red-100 text-red-600 rounded-xl text-sm font-bold hover:from-red-100 hover:to-red-200 transition-all duration-300 border-2 border-red-200 hover:border-red-300 shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
-
                 Rời nhóm
               </button>
             }
             <button
               onClick={handleLogout}
               className="px-5 py-2.5 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl text-sm font-bold hover:from-gray-200 hover:to-gray-300 transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
-
               Đăng xuất
             </button>
           </div>
@@ -462,28 +486,24 @@ export function App() {
         <div
           ref={messageListRef}
           className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-br from-gray-50/50 to-blue-50/30 custom-scrollbar">
-
           {messages.map((msg, idx) => {
             const isMe = msg.uid === auth.currentUser?.uid;
             return (
               <div
                 key={idx}
                 className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
-
                 <div
                   className={`max-w-md ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
-
                   <span className="text-xs text-gray-500 mb-1.5 px-2 font-medium">
                     {isMe ? 'Bạn' : msg.name} • {msg.time}
                   </span>
                   <div
                     className={`px-5 py-3 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 ${isMe ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-br-md' : 'bg-white text-gray-800 rounded-bl-md border border-gray-100'}`}>
-
                     <p className="leading-relaxed">{msg.text}</p>
                   </div>
                 </div>
-              </div>);
-
+              </div>
+            );
           })}
         </div>
 
@@ -496,28 +516,24 @@ export function App() {
             onChange={(e) => setMessageInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
             className="flex-1 px-6 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-300 bg-white shadow-sm hover:shadow-md" />
-
           <button
             onClick={sendMessage}
             className="px-10 py-4 bg-gradient-to-r from-blue-600 to-green-500 text-white rounded-2xl font-bold hover:from-blue-700 hover:to-green-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 flex items-center gap-2">
-
             <span>Gửi</span>
             <svg
               className="w-5 h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24">
-
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
                 d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-
             </svg>
           </button>
         </div>
       </div>
-    </div>);
-
+    </div>
+  );
 }
