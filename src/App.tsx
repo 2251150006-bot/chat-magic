@@ -475,28 +475,33 @@ export function App() {
             <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-500 bg-clip-text text-transparent">
               {currentRoomName}
             </h2>
-            {isGroup && iAmAdmin &&
+            
+            {/* THAY ĐỔI: Chỗ hiển thị nút Rời Nhóm / Giải Tán Nhóm */}
+            {isGroup && (
               <div className="flex items-center gap-3 mt-2">
-                <span className="text-xs font-bold text-orange-600 bg-gradient-to-r from-orange-100 to-yellow-100 px-3 py-1.5 rounded-lg shadow-sm border border-orange-200">
-                  👑 Trưởng nhóm
-                </span>
-                <button
-                  onClick={deleteCurrentGroup}
-                  className="text-xs bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-1.5 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-300 font-bold shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
-                  Giải tán nhóm
-                </button>
+                {iAmAdmin ? (
+                  <>
+                    <span className="text-xs font-bold text-orange-600 bg-gradient-to-r from-orange-100 to-yellow-100 px-3 py-1.5 rounded-lg shadow-sm border border-orange-200">
+                      👑 Trưởng nhóm
+                    </span>
+                    <button
+                      onClick={deleteCurrentGroup}
+                      className="text-xs bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-1.5 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-300 font-bold shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
+                      Giải tán nhóm
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={leaveCurrentGroup}
+                    className="text-xs bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-1.5 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-300 font-bold shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
+                    Rời nhóm
+                  </button>
+                )}
               </div>
-            }
+            )}
           </div>
 
           <div className="flex gap-3">
-            {isGroup && !iAmAdmin &&
-              <button
-                onClick={leaveCurrentGroup}
-                className="px-5 py-2.5 bg-gradient-to-r from-red-50 to-red-100 text-red-600 rounded-xl text-sm font-bold hover:from-red-100 hover:to-red-200 transition-all duration-300 border-2 border-red-200 hover:border-red-300 shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
-                Rời nhóm
-              </button>
-            }
             <button
               onClick={handleLogout}
               className="px-5 py-2.5 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl text-sm font-bold hover:from-gray-200 hover:to-gray-300 transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
