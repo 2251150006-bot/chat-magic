@@ -72,14 +72,24 @@ export function App() {
       }
       const res = await auth.createUserWithEmailAndPassword(email, password);
       if (res.user) {
+        // Cập nhật Profile Firebase
         await res.user.updateProfile({
           displayName: name
         });
+        
+        // Lưu vào Database
         await db.ref('usernames/' + name).set(res.user.uid);
         await db.ref('users/' + res.user.uid).set({
           name: name,
           email: email
         });
+        
+        // BẢN VÁ LỖI: Ép hệ thống cập nhật lại tên thật vào danh sách Online
+        // để khắc phục việc nó nhận nhầm tên rỗng do bất đồng bộ
+        await db.ref('status/' + res.user.uid).update({
+          name: name
+        });
+
         alert('Đăng ký xong! Bạn có thể đăng nhập ngay bây giờ.');
         setIsLoginMode(true); 
       }
@@ -205,8 +215,12 @@ export function App() {
 
   function sendMessage() {
     if (!messageInput.trim()) return;
+    
+    // Đảm bảo không bị mất tên nếu chat ngay lúc vừa đăng ký
+    const currentName = auth.currentUser?.displayName || "Bạn";
+
     db.ref('messages/' + currentRoomId).push({
-      name: auth.currentUser?.displayName,
+      name: currentName,
       text: messageInput,
       uid: auth.currentUser?.uid,
       time: new Date().toLocaleTimeString([], {
@@ -223,7 +237,7 @@ export function App() {
       if (snap.val()) {
         myStatusRef.onDisconnect().remove();
         myStatusRef.set({
-          name: user.displayName,
+          name: user.displayName || 'Đang tải...', // Phân loại tên trước khi cập nhật
           status: 'online'
         });
       }
