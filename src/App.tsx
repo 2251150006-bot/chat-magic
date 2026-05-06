@@ -29,9 +29,13 @@ export function App() {
   const [messages, setMessages] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [messageInput, setMessageInput] = useState('');
+  
+  // States cho Form Đăng nhập / Đăng ký
+  const [isLoginMode, setIsLoginMode] = useState(true);
   const [regUsername, setRegUsername] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  
   const messageListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,7 +80,8 @@ export function App() {
           name: name,
           email: email
         });
-        alert('Đăng ký xong! Hãy đăng nhập.');
+        alert('Đăng ký xong! Bạn có thể đăng nhập ngay bây giờ.');
+        setIsLoginMode(true); // Chuyển về màn hình đăng nhập sau khi đăng ký thành công
       }
     } catch (e: any) {
       alert(e.message);
@@ -86,10 +91,14 @@ export function App() {
   async function handleLogin() {
     const email = regEmail;
     const password = regPassword;
+    if (!email || !password) {
+      alert('Vui lòng nhập Email và Mật khẩu!');
+      return;
+    }
     try {
       await auth.signInWithEmailAndPassword(email, password);
     } catch (e: any) {
-      alert(e.message);
+      alert("Đăng nhập thất bại: " + e.message);
     }
   }
 
@@ -166,7 +175,6 @@ export function App() {
       });
       setGroups(groupsList);
       if (currentRoomId !== 'global' && !currentRoomId.includes('_') && !groupStillExists) {
-        // Chỉ out ra phòng chung nếu đang ở nhóm bị xóa (bỏ qua phòng chat riêng vì ID phòng riêng có chứa dấu _)
         switchRoom('global', '🌐 Phòng chung', null);
       }
     });
@@ -179,14 +187,10 @@ export function App() {
     loadMessages(id);
   }
 
-  // TÍNH NĂNG NHẮN TIN RIÊNG
   function startPrivateChat(targetUid: string, targetName: string) {
     if (!auth.currentUser) return;
     const myUid = auth.currentUser.uid;
-    
-    // Gộp 2 UID theo thứ tự Alphabet để tạo ra 1 ID duy nhất không bao giờ đổi cho 2 người này
     const privateRoomId = myUid < targetUid ? `${myUid}_${targetUid}` : `${targetUid}_${myUid}`;
-    
     switchRoom(privateRoomId, `💬 Chat với ${targetName}`, null);
   }
 
@@ -248,7 +252,7 @@ export function App() {
     }
   }
 
-  const isGroup = currentRoomId !== 'global' && !currentRoomId.includes('_'); // ID có dấu '_' là phòng riêng
+  const isGroup = currentRoomId !== 'global' && !currentRoomId.includes('_');
   const iAmAdmin = currentAdminId === auth.currentUser?.uid;
 
   if (!user) {
@@ -275,23 +279,27 @@ export function App() {
                     d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
-              <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-green-500 bg-clip-text text-transparent mb-3">
-                Cloud Chat
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-500 bg-clip-text text-transparent mb-2">
+                {isLoginMode ? 'Chào mừng trở lại!' : 'Tạo tài khoản mới'}
               </h1>
-              <p className="text-gray-600 font-medium">
-                Kết nối mọi lúc, mọi nơi
+              <p className="text-gray-500 font-medium text-sm">
+                {isLoginMode ? 'Đăng nhập để kết nối với bạn bè' : 'Tham gia cùng chúng tôi ngay hôm nay'}
               </p>
             </div>
 
             <div className="space-y-4">
-              <div className="relative group">
-                <input
-                  type="text"
-                  placeholder="Tên người dùng (Duy nhất)"
-                  value={regUsername}
-                  onChange={(e) => setRegUsername(e.target.value)}
-                  className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-300 bg-white/80 backdrop-blur-sm group-hover:border-gray-300" />
-              </div>
+              {/* Chỉ hiện ô Username khi ở màn hình Đăng ký */}
+              {!isLoginMode && (
+                <div className="relative group">
+                  <input
+                    type="text"
+                    placeholder="Tên người dùng (Duy nhất)"
+                    value={regUsername}
+                    onChange={(e) => setRegUsername(e.target.value)}
+                    className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-300 bg-white/80 backdrop-blur-sm group-hover:border-gray-300" />
+                </div>
+              )}
+              
               <div className="relative group">
                 <input
                   type="email"
@@ -300,26 +308,42 @@ export function App() {
                   onChange={(e) => setRegEmail(e.target.value)}
                   className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-300 bg-white/80 backdrop-blur-sm group-hover:border-gray-300" />
               </div>
+              
               <div className="relative group">
                 <input
                   type="password"
                   placeholder="Mật khẩu"
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (isLoginMode ? handleLogin() : handleSignUp())}
                   className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-300 bg-white/80 backdrop-blur-sm group-hover:border-gray-300" />
               </div>
 
-              <button
-                onClick={handleSignUp}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]">
-                ĐĂNG KÝ
-              </button>
-
-              <button
-                onClick={handleLogin}
-                className="w-full bg-white/80 backdrop-blur-sm text-gray-800 py-4 rounded-xl font-bold hover:bg-white transition-all duration-300 shadow-md hover:shadow-lg border-2 border-gray-200 hover:border-gray-300 transform hover:scale-[1.02] active:scale-[0.98]">
-                ĐĂNG NHẬP
-              </button>
+              {isLoginMode ? (
+                <button
+                  onClick={handleLogin}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] mt-2">
+                  ĐĂNG NHẬP
+                </button>
+              ) : (
+                <button
+                  onClick={handleSignUp}
+                  className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 rounded-xl font-bold hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] mt-2">
+                  ĐĂNG KÝ
+                </button>
+              )}
+              
+              {/* Nút chuyển đổi chế độ */}
+              <div className="text-center mt-6 pt-4 border-t border-gray-100">
+                <p className="text-gray-600 text-sm">
+                  {isLoginMode ? "Chưa có tài khoản? " : "Đã có tài khoản? "}
+                  <button 
+                    onClick={() => setIsLoginMode(!isLoginMode)}
+                    className="font-bold text-blue-600 hover:text-blue-800 hover:underline transition-colors">
+                    {isLoginMode ? "Đăng ký ngay" : "Đăng nhập"}
+                  </button>
+                </p>
+              </div>
             </div>
           </div>
         </div>
