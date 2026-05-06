@@ -81,7 +81,7 @@ export function App() {
           email: email
         });
         alert('Đăng ký xong! Bạn có thể đăng nhập ngay bây giờ.');
-        setIsLoginMode(true); // Chuyển về màn hình đăng nhập sau khi đăng ký thành công
+        setIsLoginMode(true); 
       }
     } catch (e: any) {
       alert(e.message);
@@ -288,7 +288,6 @@ export function App() {
             </div>
 
             <div className="space-y-4">
-              {/* Chỉ hiện ô Username khi ở màn hình Đăng ký */}
               {!isLoginMode && (
                 <div className="relative group">
                   <input
@@ -333,7 +332,6 @@ export function App() {
                 </button>
               )}
               
-              {/* Nút chuyển đổi chế độ */}
               <div className="text-center mt-6 pt-4 border-t border-gray-100">
                 <p className="text-gray-600 text-sm">
                   {isLoginMode ? "Chưa có tài khoản? " : "Đã có tài khoản? "}
@@ -435,7 +433,8 @@ export function App() {
                       {userData.name} {isMe ? '(Bạn)' : ''}
                     </span>
 
-                    <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ml-auto">
+                    {/* Lớp chứa các nút - Bỏ hiệu ứng tàng hình để luôn hiển thị */}
+                    <div className="flex gap-1.5 ml-auto">
                       {!isMe && (
                          <button
                            onClick={() => startPrivateChat(uid, userData.name)}
